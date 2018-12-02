@@ -1,3 +1,7 @@
+import numpy as np
+import scipy as sp
+from sklearn.cluster import KMeans
+
 # read the file and set the matrixes and variables
 with open("./graphs_part_1/ca-GrQc.txt", "r") as lines:
   firstrow = True
@@ -5,11 +9,11 @@ with open("./graphs_part_1/ca-GrQc.txt", "r") as lines:
     line = line.split()
     if firstrow:
       graphID = line[1]
-      numOfVertices = int(line[2])
-      numOfEdges = int(line[3])
+      vertices_number = int(line[2])
+      edges_number = int(line[3])
       k = int(line[4]);
-      A = [ [0] * numOfVertices for _ in range(numOfVertices)]
-      D = [ [0] * numOfVertices for _ in range(numOfVertices)]
+      A = [ [0] * vertices_number for _ in range(vertices_number)]
+      D = [ [0] * vertices_number for _ in range(vertices_number)]
       firstrow = False
     else:
       A[int(line[0])][int(line[1])] = 1
@@ -17,4 +21,13 @@ with open("./graphs_part_1/ca-GrQc.txt", "r") as lines:
       D[int(line[0])][int(line[0])] += 1
       D[int(line[1])][int(line[1])] += 1
 
-# TODO: compute matrix L
+I = np.identity(vertices_number)
+inverse_D = np.linalg.inv(D)
+sqrt_D = sp.linalg.sqrtm(inverse_D)
+L = np.subtract(I, np.matmul(sqrt_D, np.matmul(A, sqrt_D)))
+w, v = np.linalg.eigh(L)
+
+# print first k eigenvectors
+print(v[:k])
+
+# TODO: create U, normalize U, cluster points and output clusters
