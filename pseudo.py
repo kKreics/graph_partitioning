@@ -14,7 +14,7 @@ with open("./graphs_part_1/ca-GrQc.txt", "r") as lines:
     else:
       A[int(line[0])][int(line[1])] = 1
       A[int(line[0])][int(line[1])] = 1
-      D[int(line[0])][int(line[0])]
-      D[int(line[1])][int(line[1])]
+      D[int(line[0])][int(line[0])] += 1
+      D[int(line[1])][int(line[1])] += 1
 
 # TODO: compute matrix L
