@@ -1,3 +1,18 @@
+with open("./graphs_part_1/ca-GrQc.txt", "r") as lines:
+  firstrow = True;
+  for line in lines:
+    line = line.split();
+    if firstrow:
+      graphID = line[1];
+      numOfVertices = int(line[2]);
+      numOfEdges = int(line[3]);
+      k = int(line[4]);
+      A = [ [0] * numOfVertices for _ in range(numOfVertices)]
+      D = [ [0] * numOfVertices for _ in range(numOfVertices)]
+      firstrow = False;
+    # else:
+
+# print(A, D);
 # open text file
 # read the first line (# graphID numOfVertices numOfEdges k)
 # save k, numOfEdges and graphID
