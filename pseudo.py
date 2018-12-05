@@ -72,6 +72,9 @@ for idx, i in enumerate(output):
 #print(community_dict)
 
 cutted_edges = np.zeros((k))
+size_coms = np.zeros((k))
+for node in output:
+    size_coms[node] += 1
 # objective function
 samecommunity = 0
 differentcommunity = 0
@@ -90,3 +93,9 @@ print("Total cutted edges:",differentcommunity)
 for com in range(k):
     print("Community",com,"cuts",cutted_edges[com],"edges")
 #print(cutted_edges)
+print(size_coms)
+print("Size of smallest community:",np.min(size_coms))
+
+#OBJECTIVE
+phi = cutted_edges/np.min(size_coms)
+print("Objective:",phi)
