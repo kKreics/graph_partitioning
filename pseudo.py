@@ -8,6 +8,7 @@ with open("./graphs_part_1/ca-GrQc.txt", "r") as lines:
   for line in lines:
     line = line.split()
     if firstrow:
+      print("k: ", int(line[4]))
       graphID = line[1]
       vertices_number = int(line[2])
       edges_number = int(line[3])
@@ -28,6 +29,8 @@ L = np.subtract(I, np.matmul(sqrt_D, np.matmul(A, sqrt_D)))
 w, v = np.linalg.eigh(L)
 
 # print first k eigenvectors
-print(v[:k])
+#print(v)
 
+print(v[:k].shape)
+U = np.matrix(v[:k])
 # TODO: create U, normalize U, cluster points and output clusters
