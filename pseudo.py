@@ -66,5 +66,9 @@ np.savetxt("Y.csv", Y, delimiter=",")
 print(output)
 np.savetxt("v.csv", v, delimiter=",")
 
+community_dict = {}
+for idx, i in enumerate(output):
+    community_dict[idx] = i
+print(community_dict)
 # objective function
 print(edges)
