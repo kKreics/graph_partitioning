@@ -69,6 +69,24 @@ np.savetxt("v.csv", v, delimiter=",")
 community_dict = {}
 for idx, i in enumerate(output):
     community_dict[idx] = i
-print(community_dict)
+#print(community_dict)
+
+cutted_edges = np.zeros((k))
 # objective function
-print(edges)
+samecommunity = 0
+differentcommunity = 0
+for edge in edges:
+    print(edge)
+    unode,vnode = int(edge[0]),int(edge[1])
+    ucom,vcom = community_dict[unode],community_dict[vnode]
+    if ucom == vcom:
+        samecommunity += 1
+    else:
+        differentcommunity += 1
+        cutted_edges[ucom] += 1
+        cutted_edges[vcom] += 1
+print("Total non-cutted edges:",samecommunity)
+print("Total cutted edges:",differentcommunity)
+for com in range(k):
+    print("Community",com,"cuts",cutted_edges[com],"edges")
+#print(cutted_edges)
