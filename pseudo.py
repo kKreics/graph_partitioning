@@ -8,7 +8,7 @@ from random import random
 
 
 # read the file and set the matrixes and variables
-with open("./graphs_part_1/karate.txt", "r") as lines:
+with open("./graphs_part_1/ca-GrQc.txt", "r") as lines:
   firstrow = True
   for idx, line in enumerate(lines):
     line = line.split()
@@ -39,7 +39,7 @@ sqrt_D = sp.linalg.sqrtm(inverse_D)
 L = np.subtract(I, np.matmul(sqrt_D, np.matmul(A, sqrt_D)))
 np.savetxt("Normalized_L.csv", L, delimiter=",")
 w, v = sp.linalg.eigh(L, eigvals=(L.shape[0]-k, L.shape[0]-1))
-
+print("k eignevalues:",k,w)
 # print first k eigenvectors
 #print("eigenvectors", v.shape)
 #print(v[:k].shape)
@@ -97,12 +97,12 @@ print("Total non-cutted edges:",samecommunity)
 print("Total cutted edges:",differentcommunity)
 
 for com in range(k):
-    print("Community",com,"cuts",cutted_edges[com],"edges")
+    print("Community",com,"cuts",int(cutted_edges[com]),"edges")
 #print(cutted_edges)
 #print(size_coms)
-print("Size of smallest community:",np.min(size_coms))
+print("Size of smallest community:",int(np.min(size_coms)))
 
-#OBJECTIVE
+#OBJECTIVE aka Isoperimetric number (https://arxiv.org/pdf/1609.08072.pdf, p. 12)
 phi = cutted_edges/np.min(size_coms)
 print("Objective:",phi)
 
@@ -114,6 +114,7 @@ for ka in range(k):
         if node == ka:
             k_array.append(idx)
     nodes_dict[ka] = k_array
+    print("Community",int(ka),"has",len(k_array),"nodes.")
 
 colors = [(random(), random(), random()) for _i in range(k)]
 tupleedges = tuple(map(tuple, edges.astype(int)))
@@ -124,5 +125,14 @@ G.add_edges_from(tupleedges)
 
 pos = nx.spring_layout(G)
 for com in range(k):
-    nx.draw(G,pos=pos, nodelist = nodes_dict[com], node_color=colors[com])
+    nx.draw(G,pos=pos, node_size=50,nodelist = nodes_dict[com], node_color=colors[com])
+
+
+print("Node Degree")
+degree = []
+for v in G:
+    degree.append(G.degree(v))
+print("Average degree:",np.average(degree))
+print("Std. degree:",np.std(degree))
+plt.boxplot(degree)
 plt.show()
