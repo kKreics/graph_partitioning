@@ -7,7 +7,8 @@ from random import random
 
 # Graph similarity matrix
 # Read file and create adjency, degree, identity, inverse degree and square root degree matrices
-with open("./graphs_part_1/karate.txt", "r") as lines:
+# ca-GrQc
+with open("./graphs_part_1/ca-GrQc.txt", "r") as lines:
   firstrow = True
   for idx, line in enumerate(lines):
     line = line.split()
@@ -16,60 +17,86 @@ with open("./graphs_part_1/karate.txt", "r") as lines:
       graphID = line[1]
       vertices_number = int(line[2])
       edges_number = int(line[3])
+      A = np.empty((vertices_number, vertices_number))
+      D = np.empty((vertices_number, vertices_number))
+      A = np.matrix(A)
+      D = np.matrix(D)
       edges = np.empty((edges_number, 2))
       k = int(line[4]);
-      A = [ [0] * vertices_number for _ in range(vertices_number)]
-      D = [ [0] * vertices_number for _ in range(vertices_number)]
+      #A = [ [0] * vertices_number for _ in range(vertices_number)]
+      #D = [ [0] * vertices_number for _ in range(vertices_number)]
       firstrow = False
     else:
-      A[int(line[0])][int(line[1])] = 1
-      A[int(line[0])][int(line[1])] = 1
-      A[int(line[1])][int(line[0])] = 1 # with these lines the whole adjency matrix is now calculated
-      A[int(line[1])][int(line[0])] = 1
-      D[int(line[0])][int(line[0])] += 1
-      D[int(line[1])][int(line[1])] += 1
+      A[int(line[0]),int(line[1])] = 1
+      A[int(line[1]),int(line[0])] = 1 # with these lines the whole adjency matrix is now calculated
+      D[int(line[0]),int(line[0])] += 1
+      D[int(line[1]),int(line[1])] += 1
       edges[idx-1] = [int(line[0]),int(line[1])]
-np.savetxt("A.csv", A, delimiter=",")
-np.savetxt("D.csv", D, delimiter=",")
-I = np.identity(vertices_number)
-np.savetxt("I.csv", I, delimiter=",")
-inverse_D = np.linalg.inv(D)
-sqrt_D = sp.linalg.sqrtm(inverse_D)
 
+#print("A",A.shape)
+
+print("A",A[:2,:2])
+print("D",D[:2,:2])
+
+#np.savetxt("A.csv", A, delimiter=",")
+#np.savetxt("D.csv", D, delimiter=",")
+I = np.identity(vertices_number)
+
+#np.savetxt("I.csv", I, delimiter=",")
+try:
+    inverse_D = np.linalg.inv(D)
+    #print(inverse_D)
+except:
+    print("cant inverse")
+sqrt_D = sp.linalg.sqrtm(inverse_D)
+#np.savetxt("Inverse_D.csv", inverse_D, delimiter=",")
 def ng_norm(A,sqrt_D):
-    L = np.subtract(I, np.matmul(sqrt_D, np.matmul(A, sqrt_D)))
-    np.savetxt("Normalized_L.csv", L, delimiter=",")
+    L = np.subtract(I, np.matmul(sqrt_D, np.matmul(A, sqrt_D))) # Symmetric normalized Laplacian
+    #np.savetxt("Symmetric_Normalized_L.csv", L, delimiter=",")
     w, v = np.linalg.eig(L) #, eigvals=(L.shape[0]-k, L.shape[0]-1)) #biggest eig
-    print("k eignevalues:",k,w)
+    #print("k eignevalues:",k,w)
     U = v[:,:k] # first K eigenvectors (step 3)
     Y = np.zeros(U.shape)
-    print("L shape",L.shape)
-    print("Y shape",Y.shape)
-    print("U shape",U.shape)
-    #normalize rows (step 4)
+    # print("L shape",L.shape)
+    # print("Y shape",Y.shape)
+    # print("U shape",U.shape)
+    # normalize rows (step 4)
     for i in range(U.shape[0]):
-        #print("i", i)
-        #print(U[i])
         sum = np.sum(np.square(U[i]))
-        #print("sum: ",sum)
         denominator = np.sqrt(sum)
-        #print("denominator: ", denominator)
         for j in range(U.shape[1]):
-            Y[i][j] = U[i][j]/denominator # Step 4
+            Y[i,j] = U[i,j]/denominator # Step 4
 
-    np.savetxt("U.csv", U, delimiter=",")
-    np.savetxt("Y.csv", Y, delimiter=",")
-    np.savetxt("v.csv", v, delimiter=",")
+    #np.savetxt("U.csv", U, delimiter=",")
+    #np.savetxt("Y.csv", Y, delimiter=",")
+    #np.savetxt("v.csv", v, delimiter=",")
     return Y, U
 
-#Cluster U into k clusters
-def kmeans(Y,U):
-    kmeans = KMeans(n_clusters=k, random_state=0).fit(Y)
-    output = kmeans.predict(U)
-    return output
+def shi_norm(A, inverse_D, D):
+    L_normal = D - A
+    L = np.matmul(inverse_D, L_normal) # Random walk normalized Laplacian
+    #np.savetxt("Random_Walk_Normalized_L.csv", L, delimiter=",")
+    #print("L",L[:50,:50])
+    w, v = np.linalg.eig(L) #, eigvals=(L.shape[0]-k, L.shape[0]-1)) #biggest eig
+    #print("k eignevalues:", k, w)
+    U = np.real(v[:, :k]) # first K eigenvectors (step 3)
+    #print("L shape", L.shape)
+    #print("Y shape",Y.shape)
+    #print("U shape",U.shape)
+    # normalize rows (step 4)
+    #np.savetxt("U.csv", U, delimiter=",")
+    #np.savetxt("Y.csv", Y, delimiter=",")
+    #np.savetxt("v.csv", v, delimiter=",")
+    return U
 
-Y, U = ng_norm(A,sqrt_D)
-output = kmeans(Y, U)
+#Cluster U into k clusters
+def kmeans(Y):
+    kmeans = KMeans(n_clusters=k, random_state=0).fit(Y)
+    output = kmeans.predict(Y)
+    return output
+#Y = shi_norm(A, inverse_D, D)
+Y, U = ng_norm(A, sqrt_D)
+output = kmeans(Y)
 
 community_dict = {}
 cutted_edges = np.zeros((k))
@@ -106,34 +133,36 @@ print("Size of smallest community:",int(np.min(size_coms)))
 phi = cutted_edges/np.min(size_coms)
 print("Objective:",phi)
 
+def plot():
+    nodes_dict = {}
+    for ka in range(k):
+        k_array = []
+        for idx, node in enumerate(output):
+            if node == ka:
+                k_array.append(idx)
+        nodes_dict[ka] = k_array
+        print("Community",int(ka),"has",len(k_array),"nodes.")
 
-nodes_dict = {}
-for ka in range(k):
-    k_array = []
-    for idx, node in enumerate(output):
-        if node == ka:
-            k_array.append(idx)
-    nodes_dict[ka] = k_array
-    print("Community",int(ka),"has",len(k_array),"nodes.")
+    colors = [(random(), random(), random()) for _i in range(k)]
+    tupleedges = tuple(map(tuple, edges.astype(int)))
+    G=nx.Graph()
+    for com in range(k):
+        G.add_nodes_from(nodes_dict[com])
+    G.add_edges_from(tupleedges)
 
-colors = [(random(), random(), random()) for _i in range(k)]
-tupleedges = tuple(map(tuple, edges.astype(int)))
-G=nx.Graph()
-for com in range(k):
-    G.add_nodes_from(nodes_dict[com])
-G.add_edges_from(tupleedges)
-
-pos = nx.spring_layout(G)
-for com in range(k):
-    nx.draw(G,pos=pos, node_size=150,nodelist = nodes_dict[com], node_color=colors[com])
+    pos = nx.spring_layout(G)
+    for com in range(k):
+        nx.draw(G,pos=pos, node_size=150,nodelist = nodes_dict[com], node_color=colors[com])
 
 
 
-print("Node Degree")
-degree = []
-for v in G:
-    degree.append(G.degree(v))
-print("Average degree:",np.average(degree))
-print("Std. degree:",np.std(degree))
-#plt.boxplot(degree)
-plt.show()
+    print("Node Degree")
+    degree = []
+    for v in G:
+        degree.append(G.degree(v))
+    print("Average degree:",np.average(degree))
+    print("Std. degree:",np.std(degree))
+    #plt.boxplot(degree)
+    plt.show()
+    return
+plot()
