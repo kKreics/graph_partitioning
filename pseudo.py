@@ -92,7 +92,7 @@ def shi_norm(A, inverse_D, D):
 
 #Cluster U into k clusters
 def kmeans(Y):
-    kmeans = KMeans(n_clusters=k, random_state=0).fit(Y)
+    kmeans = KMeans(n_clusters=k, random_state=0,max_iter=1000).fit(Y)
     fittrans = KMeans(n_clusters=k,random_state=0).fit_transform(Y)
     output = kmeans.predict(Y)
     return output, fittrans
@@ -116,6 +116,12 @@ print(output)
 print(fittrans)
 
 
+# minmax_kmeans
+#np.savetxt('data.data', Y, delimiter='   ')
+#os.system("./minmax_kmeans.py ../data.data 3 2 100 -n 3 -o mm.out")
+
+
+
 
 # objective function
 for edge in edges:
@@ -133,15 +139,20 @@ for edge in edges:
 
 for com in range(k):
     print("Community",com,"cuts",int(cutted_edges[com]),"edges")
+
 #print(cutted_edges)
 #print(size_coms)
 #print("Size of smallest community:",int(np.min(size_coms)))
+
+
+
 
 #OBJECTIVE aka Isoperimetric number (https://arxiv.org/pdf/1609.08072.pdf, p. 12)
 phi = cutted_edges/np.min(size_coms)
 print("Objective:",phi)
 
 def plot():
+    comsize = []
     nodes_dict = {}
     for ka in range(k):
         k_array = []
@@ -151,6 +162,13 @@ def plot():
         nodes_dict[ka] = k_array
         print("Community",int(ka),"has",len(k_array),"nodes.")
 
+        comsize.append(len(k_array))
+
+    print(comsize)
+
+
+
+    print("nodes_dict:",nodes_dict)
     colors = [(random(), random(), random()) for _i in range(k)]
     tupleedges = tuple(map(tuple, edges.astype(int)))
     G=nx.Graph()
@@ -173,4 +191,8 @@ def plot():
     #plt.boxplot(degree)
     plt.show()
     return
+
+
+
+
 plot()
