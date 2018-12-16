@@ -93,11 +93,14 @@ def shi_norm(A, inverse_D, D):
 #Cluster U into k clusters
 def kmeans(Y):
     kmeans = KMeans(n_clusters=k, random_state=0).fit(Y)
+    fittrans = KMeans(n_clusters=k,random_state=0).fit_transform(Y)
     output = kmeans.predict(Y)
-    return output
+    return output, fittrans
+
+
 #Y = shi_norm(A, inverse_D, D)
 Y, U = ng_norm(A, sqrt_D)
-output = kmeans(Y)
+output, fittrans = kmeans(Y)
 
 community_dict = {}
 cutted_edges = np.zeros((k))
@@ -109,6 +112,10 @@ for idx, i in enumerate(output):
     community_dict[idx] = i
     size_coms[i] += 1
 #print(community_dict)
+print(output)
+print(fittrans)
+
+
 
 # objective function
 for edge in edges:
@@ -128,7 +135,7 @@ for com in range(k):
     print("Community",com,"cuts",int(cutted_edges[com]),"edges")
 #print(cutted_edges)
 #print(size_coms)
-print("Size of smallest community:",int(np.min(size_coms)))
+#print("Size of smallest community:",int(np.min(size_coms)))
 
 #OBJECTIVE aka Isoperimetric number (https://arxiv.org/pdf/1609.08072.pdf, p. 12)
 phi = cutted_edges/np.min(size_coms)
