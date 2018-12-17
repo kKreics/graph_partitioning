@@ -32,7 +32,6 @@ def read_graph():
 
 def ng_norm(A, sqrt_D, I, k):
     L = np.subtract(I, np.matmul(sqrt_D, np.matmul(A, sqrt_D))) # Symmetric normalized Laplacian
-    np.savetxt("Symmetric_Normalized_L.csv", L, delimiter=",", fmt='%f')
     w, v = np.linalg.eig(L) #, eigvals=(L.shape[0]-k, L.shape[0]-1)) #biggest eig
     U = v[:,:k] # first K eigenvectors (step 3)
     Y = np.zeros(U.shape)
@@ -94,6 +93,23 @@ def sizes(output, k):
 
     return sizes
 
+def shuffle_communities(output, vertices_number, fittrans, k, sizes, edges):
+    ITERACTION_COUNT = 5000
+    min_phi = vertices_number
+    for i in range(ITERACTION_COUNT):
+        o = output[:]
+        a,b = random.sample(range(0, len(output) - 1), 2)
+        tmp = o[a]
+        o[a] = o[b]
+        o[b] = tmp
+        phi = sum(objective(o, k, edges))
+        if phi < min_phi:
+            min_phi = phi
+            output = o[:]
+
+    return output, objective(output, k, edges)
+
+
 def balance_communities(output, vertices_number, fittrans, k, sizes, edges):
     min_phi = vertices_number
     for r in range(round(vertices_number / k)):
@@ -133,7 +149,8 @@ def main():
     output, fittrans = kmeans(Y, k)
 
     s = sizes(output, k)
-    output, objective = balance_communities(output, vertices_number, fittrans, k, s, edges)
+    # output, objective = balance_communities(output, vertices_number, fittrans, k, s, edges)
+    output, objective = shuffle_communities(output, vertices_number, fittrans, k, s, edges)
 
     print("Result")
     print(objective)
