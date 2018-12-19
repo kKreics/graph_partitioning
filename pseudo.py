@@ -1,12 +1,13 @@
 import numpy as np
 import scipy as sp
 from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
 import networkx as nx
 import random
 
 # Read file and create adjency, degree, identity, inverse degree and square root degree matrices
 def read_graph():
-    with open("./graphs_part_1/ca-HepPh.txt", "r") as lines:
+    with open("./graphs_part_1/karate.txt", "r") as lines:
         firstrow = True
         for idx, line in enumerate(lines):
             line = line.split()
@@ -43,7 +44,7 @@ def ng_norm(A, sqrt_D, I, k):
 
     return Y, U
 
-def shi_norm(A, inverse_D, D):
+def shi_norm(A, inverse_D, D, k):
     L_normal = D - A
     L = np.matmul(inverse_D, L_normal) # Random walk normalized Laplacian
     w, v = np.linalg.eig(L) #, eigvals=(L.shape[0]-k, L.shape[0]-1)) #biggest eig
@@ -106,7 +107,8 @@ def shuffle_communities(output, vertices_number, fittrans, k, sizes, edges):
 
 def balance_communities(output, vertices_number, fittrans, k, sizes, edges):
     min_phi = vertices_number
-    for r in range(round(vertices_number / k)):
+    changed = []
+    for r in range(round(vertices_number)):
         for i in range(len(sizes)):
             if sizes[i] > round(vertices_number / k):
                 next_index = i + 1 if i < (len(sizes) - 1) else 0
@@ -114,12 +116,14 @@ def balance_communities(output, vertices_number, fittrans, k, sizes, edges):
                 min_err = vertices_number
                 movement = -1
                 for j in range(len(output)):
-                    if output[j] == i:
+                    if output[j] == i and j not in changed:
+                        print(output[j], fittrans[j][next_index], min_err)
                         if fittrans[j][next_index] < min_err or fittrans[j][prev_index] < min_err:
                             min_err = fittrans[j][prev_index] if fittrans[j][next_index] > fittrans[j][prev_index] else fittrans[j][next_index]
                             movement = prev_index if fittrans[j][next_index] > fittrans[j][prev_index] else next_index
                             replace = j
                 if movement != -1:
+                    changed.append(replace)
                     output[replace] = movement
                     sizes[i] -= 1
                     sizes[movement] += 1
@@ -131,6 +135,29 @@ def balance_communities(output, vertices_number, fittrans, k, sizes, edges):
 
     return min_output, cost
 
+def plot(k, edges, output):
+    nodes_dict = {}
+    for ka in range(k):
+        k_array = []
+        for idx, node in enumerate(output):
+            if node == ka:
+                k_array.append(idx)
+        nodes_dict[ka] = k_array
+        print("Community",int(ka),"has",len(k_array),"nodes.")
+
+    colors = [(random.random(), random.random(), random.random()) for _i in range(k)]
+    tupleedges = tuple(map(tuple, edges.astype(int)))
+    G=nx.Graph()
+    for com in range(k):
+        G.add_nodes_from(nodes_dict[com])
+    G.add_edges_from(tupleedges)
+
+    pos = nx.spring_layout(G)
+    for com in range(k):
+        nx.draw(G,pos=pos, node_size=200,nodelist = nodes_dict[com], node_color=colors[com])
+    plt.show()
+    return
+
 def main():
     A, D, edges, k, vertices_number, edges_number = read_graph()
 
@@ -139,23 +166,24 @@ def main():
     inverse_D = np.linalg.inv(D)
     sqrt_D = sp.linalg.sqrtm(inverse_D)
 
-    Y, U = ng_norm(A, sqrt_D, I, k)
+    #Y, U = ng_norm(A, sqrt_D, I, k)
+    Y = shi_norm(A, inverse_D, D, k)
     output, fittrans = kmeans(Y, k)
-
+    plot(k, edges, output)
     s = sizes(output, k)
 
     print("Basic spectral algorithm")
     print(objective(output, k, edges))
     output, cost = balance_communities(output, vertices_number, fittrans, k, s, edges)
+    plot(k, edges, output)
     with open('ca-HepPh-balanced.txt', 'a') as the_file:
         for idx, community in enumerate(output):
             the_file.write(str(idx)+" "+str(community)+"\n")
     print("Balanced result")
     print(cost)
+
     output, cost = shuffle_communities(output, vertices_number, fittrans, k, s, edges)
     print("Randomized result")
     print(cost)
 
 main()
-
-
