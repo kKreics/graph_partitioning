@@ -6,7 +6,7 @@ import random
 
 # Read file and create adjency, degree, identity, inverse degree and square root degree matrices
 def read_graph():
-    with open("./graphs_part_1/ca-GrQc.txt", "r") as lines:
+    with open("./graphs_part_1/ca-HepPh.txt", "r") as lines:
         firstrow = True
         for idx, line in enumerate(lines):
             line = line.split()
@@ -60,9 +60,7 @@ def kmeans(Y, k):
 # objective function
 def objective(r, k, edges):
     community_dict = {}
-    cutted_edges = np.zeros((k))
     size_coms = np.zeros((k))
-    samecommunity = 0
     differentcommunity = 0
 
     for idx, i in enumerate(r):
@@ -72,13 +70,9 @@ def objective(r, k, edges):
     for edge in edges:
         unode, vnode = int(edge[0]), int(edge[1])
         ucom, vcom = community_dict[unode], community_dict[vnode]
-        if ucom == vcom:
-            samecommunity += 1
-        else:
+        if ucom != vcom:
             differentcommunity += 1
-            cutted_edges[ucom] += 1
-            cutted_edges[vcom] += 1
-    phi = cutted_edges/np.min(size_coms)
+    phi = differentcommunity/np.min(size_coms)
     return phi
 
 def sizes(output, k):
@@ -102,7 +96,7 @@ def shuffle_communities(output, vertices_number, fittrans, k, sizes, edges):
         tmp = o[a]
         o[a] = o[b]
         o[b] = tmp
-        phi = sum(objective(o, k, edges))
+        phi = objective(o, k, edges)
         if phi < min_phi:
             min_phi = phi
             output = o[:]
@@ -129,13 +123,13 @@ def balance_communities(output, vertices_number, fittrans, k, sizes, edges):
                     output[replace] = movement
                     sizes[i] -= 1
                     sizes[movement] += 1
-                phi = sum(objective(output, k, edges))
+                phi = objective(output, k, edges)
                 if phi < min_phi:
                     min_phi = phi
                     min_output = output[:]
-                    objective = objective(output, k, edges)
+                    cost = objective(output, k, edges)
 
-    return min_output, objective
+    return min_output, cost
 
 def main():
     A, D, edges, k, vertices_number, edges_number = read_graph()
@@ -149,12 +143,18 @@ def main():
     output, fittrans = kmeans(Y, k)
 
     s = sizes(output, k)
-    # output, objective = balance_communities(output, vertices_number, fittrans, k, s, edges)
-    output, objective = shuffle_communities(output, vertices_number, fittrans, k, s, edges)
 
-    print("Result")
-    print(objective)
-    print(output)
+    print("Basic spectral algorithm")
+    print(objective(output, k, edges))
+    output, cost = balance_communities(output, vertices_number, fittrans, k, s, edges)
+    with open('ca-HepPh-balanced.txt', 'a') as the_file:
+        for idx, community in enumerate(output):
+            the_file.write(str(idx)+" "+str(community)+"\n")
+    print("Balanced result")
+    print(cost)
+    output, cost = shuffle_communities(output, vertices_number, fittrans, k, s, edges)
+    print("Randomized result")
+    print(cost)
 
 main()
 
