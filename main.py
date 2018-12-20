@@ -1,50 +1,58 @@
 import numpy as np
 import scipy as sp
+from scipy.sparse import csr_matrix, identity, linalg
 from sklearn.cluster import KMeans
-import matplotlib.pyplot as plt
 import networkx as nx
 import random
 
 # Read file and create adjency, degree, identity, inverse degree and square root degree matrices
 def read_graph():
-    with open("./graphs_part_1/karate.txt", "r") as lines:
+    with open("./graphs_part_1/ca-CondMat.txt", "r") as lines:
         firstrow = True
+        rows = []
+        cols = []
         for idx, line in enumerate(lines):
             line = line.split()
             if firstrow:
                 # graphID = line[1]
                 vertices_number = int(line[2])
                 edges_number = int(line[3])
-                A = np.empty((vertices_number, vertices_number))
-                D = np.empty((vertices_number, vertices_number))
-                A = np.matrix(A)
-                D = np.matrix(D)
                 edges = np.empty((edges_number, 2))
                 k = int(line[4])
                 firstrow = False
+                datad = [0] * vertices_number
             else:
-                A[int(line[0]),int(line[1])] = 1
-                A[int(line[1]),int(line[0])] = 1 # with these lines the whole adjency matrix is now calculated
-                D[int(line[0]),int(line[0])] += 1
-                D[int(line[1]),int(line[1])] += 1
+                rows.append(int(line[0]))
+                rows.append(int(line[1]))
+                cols.append(int(line[0]))
+                cols.append(int(line[1]))
+                datad[int(line[0])] += 1
+                datad[int(line[1])] += 1
                 edges[idx-1] = [int(line[0]),int(line[1])]
+
+    data = [1] * len(rows)
+    A = csr_matrix((data, (rows, cols)))
+    D = csr_matrix((datad, (list(range(vertices_number)), list(range(vertices_number)))))
 
     return A, D, edges, k, vertices_number, edges_number
 
 def ng_norm(A, sqrt_D, I, k):
-    L = np.subtract(I, np.matmul(sqrt_D, np.matmul(A, sqrt_D))) # Symmetric normalized Laplacian
-    w, v = np.linalg.eig(L) #, eigvals=(L.shape[0]-k, L.shape[0]-1)) #biggest eig
+    L = I - sqrt_D * A * sqrt_D
+    w, v = linalg.eigs(L, k)
+
+    w = np.real(w)
+    v = np.real(v)
+
+    lengths = np.linalg.norm(v, axis=1)
+
+    v = v / lengths[:, np.newaxis]
+
     U = v[:,:k] # first K eigenvectors (step 3)
-    Y = np.zeros(U.shape)
-    for i in range(U.shape[0]):
-        sum = np.sum(np.square(U[i]))
-        denominator = np.sqrt(sum)
-        for j in range(U.shape[1]):
-            Y[i,j] = U[i,j]/denominator # Step 4
+    Y = v
 
     return Y, U
 
-def shi_norm(A, inverse_D, D, k):
+def shi_norm(A, inverse_D, D):
     L_normal = D - A
     L = np.matmul(inverse_D, L_normal) # Random walk normalized Laplacian
     w, v = np.linalg.eig(L) #, eigvals=(L.shape[0]-k, L.shape[0]-1)) #biggest eig
@@ -53,9 +61,8 @@ def shi_norm(A, inverse_D, D, k):
 
 # cluster U into k clusters
 def kmeans(Y, k):
-    kmeans = KMeans(n_clusters=k, random_state=0).fit(Y)
+    output = KMeans(n_clusters=k, n_jobs=-1).fit_predict(Y)
     fittrans = KMeans(n_clusters=k,random_state=0).fit_transform(Y)
-    output = kmeans.predict(Y)
     return output, fittrans
 
 # objective function
@@ -90,7 +97,7 @@ def sizes(output, k):
 
 def shuffle_communities(output, vertices_number, fittrans, k, sizes, edges):
     ITERACTION_COUNT = 5000
-    min_phi = vertices_number
+    min_phi = objective(output, k, edges)
     for i in range(ITERACTION_COUNT):
         o = output[:]
         a,b = random.sample(range(0, len(output) - 1), 2)
@@ -106,10 +113,11 @@ def shuffle_communities(output, vertices_number, fittrans, k, sizes, edges):
 
 
 def balance_communities(output, vertices_number, fittrans, k, sizes, edges):
-    min_phi = vertices_number
+    min_phi = objective(output, k, edges)
     changed = []
-    for r in range(round(vertices_number)):
+    for r in range(round(vertices_number / k)):
         for i in range(len(sizes)):
+            # print(r, i)
             if sizes[i] > round(vertices_number / k):
                 next_index = i + 1 if i < (len(sizes) - 1) else 0
                 prev_index = i - 1 if i > 0 else len(sizes) - 1
@@ -117,11 +125,11 @@ def balance_communities(output, vertices_number, fittrans, k, sizes, edges):
                 movement = -1
                 for j in range(len(output)):
                     if output[j] == i and j not in changed:
-                        print(output[j], fittrans[j][next_index], min_err)
-                        if fittrans[j][next_index] < min_err or fittrans[j][prev_index] < min_err:
-                            min_err = fittrans[j][prev_index] if fittrans[j][next_index] > fittrans[j][prev_index] else fittrans[j][next_index]
-                            movement = prev_index if fittrans[j][next_index] > fittrans[j][prev_index] else next_index
-                            replace = j
+                        for ij in range(k):
+                            if ij != i and fittrans[j][ij] < min_err:
+                                min_err = fittrans[j][ij]
+                                movement = ij
+                                replace = j
                 if movement != -1:
                     changed.append(replace)
                     output[replace] = movement
@@ -135,55 +143,30 @@ def balance_communities(output, vertices_number, fittrans, k, sizes, edges):
 
     return min_output, cost
 
-def plot(k, edges, output):
-    nodes_dict = {}
-    for ka in range(k):
-        k_array = []
-        for idx, node in enumerate(output):
-            if node == ka:
-                k_array.append(idx)
-        nodes_dict[ka] = k_array
-        print("Community",int(ka),"has",len(k_array),"nodes.")
-
-    colors = [(random.random(), random.random(), random.random()) for _i in range(k)]
-    tupleedges = tuple(map(tuple, edges.astype(int)))
-    G=nx.Graph()
-    for com in range(k):
-        G.add_nodes_from(nodes_dict[com])
-    G.add_edges_from(tupleedges)
-
-    pos = nx.spring_layout(G)
-    for com in range(k):
-        nx.draw(G,pos=pos, node_size=200,nodelist = nodes_dict[com], node_color=colors[com])
-    plt.show()
-    return
-
 def main():
     A, D, edges, k, vertices_number, edges_number = read_graph()
 
-    I = np.identity(vertices_number)
+    I = identity(vertices_number, format='csc')
 
-    inverse_D = np.linalg.inv(D)
-    sqrt_D = sp.linalg.sqrtm(inverse_D)
+    inverse_D = linalg.inv(D)
+    sqrt_D = np.sqrt(inverse_D)
 
-    #Y, U = ng_norm(A, sqrt_D, I, k)
-    Y = shi_norm(A, inverse_D, D, k)
+    Y, U = ng_norm(A, sqrt_D, I, k)
+    print(Y)
+
     output, fittrans = kmeans(Y, k)
-    plot(k, edges, output)
+
     s = sizes(output, k)
 
     print("Basic spectral algorithm")
     print(objective(output, k, edges))
     output, cost = balance_communities(output, vertices_number, fittrans, k, s, edges)
-    plot(k, edges, output)
-    with open('ca-HepPh-balanced.txt', 'a') as the_file:
+    with open('ca-CondMat-balanced.txt', 'a') as the_file:
         for idx, community in enumerate(output):
             the_file.write(str(idx)+" "+str(community)+"\n")
     print("Balanced result")
     print(cost)
 
-    output, cost = shuffle_communities(output, vertices_number, fittrans, k, s, edges)
-    print("Randomized result")
-    print(cost)
-
 main()
+
+
